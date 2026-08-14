@@ -134,6 +134,21 @@ def target_files(rows: list[dict[str, str]], args: argparse.Namespace) -> list[t
     ]
 
 
+def count_unmatched_scripts(args: argparse.Namespace, row_count: int) -> int:
+    """Count log<N> files whose index is greater than the number of CSV rows."""
+    if not args.scripts_dir.is_dir():
+        return 0
+    pattern = re.compile(
+        r"^" + re.escape(args.prefix) + r"(\d+)" + re.escape(args.suffix) + r"$"
+    )
+    unmatched = 0
+    for entry in args.scripts_dir.iterdir():
+        match = pattern.match(entry.name)
+        if match and int(match.group(1)) > row_count:
+            unmatched += 1
+    return unmatched
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
 
@@ -210,6 +225,14 @@ def main(argv: list[str] | None = None) -> int:
 
     action = "Would edit" if args.dry_run else "Edited"
     print(f"{action} {edited} file(s); skipped {skipped}.")
+
+    unmatched = count_unmatched_scripts(args, len(rows))
+    if unmatched:
+        print(
+            f"warning: {unmatched} script file(s) have an index higher than the "
+            f"{len(rows)} CSV row(s) and were left unchanged (no matching row)."
+        )
+
     for warning in warnings:
         print(f"warning: {warning}")
     return 0

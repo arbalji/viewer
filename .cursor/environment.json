@@ -1,0 +1,17 @@
+{
+  "name": "viewer",
+  "install": "sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y php-cli php-curl",
+  "terminals": [
+    {
+      "name": "php-server",
+      "command": "php -S 0.0.0.0:8080 -t .",
+      "description": "PHP built-in web server serving the image proxy (process.php) on http://0.0.0.0:8080/process.php."
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 8080
+    }
+  ]
+}

@@ -59,6 +59,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Name of the new column added to the CSV.",
     )
     parser.add_argument(
+        "--encoding",
+        default=None,
+        help="Force a specific input encoding (e.g. cp1252, latin-1). "
+        "By default utf-8 is tried first, then cp1252.",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=None,
@@ -82,17 +88,33 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def read_rows(csv_path: Path) -> tuple[list[str], list[dict[str, str]]]:
+def read_rows(
+    csv_path: Path, encoding: str | None = None
+) -> tuple[list[str], list[dict[str, str]]]:
     if not csv_path.is_file():
         raise FileNotFoundError(f"CSV not found: {csv_path}")
 
-    with csv_path.open("r", newline="", encoding="utf-8-sig") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames is None:
-            raise ValueError(f"CSV has no header row: {csv_path}")
-        fieldnames = list(reader.fieldnames)
-        rows = [dict(row) for row in reader]
-    return fieldnames, rows
+    # utf-8-sig transparently strips a BOM when present. If the file is not
+    # UTF-8 (Excel on Windows often saves cp1252), fall back so a stray byte
+    # like 0xa0 (non-breaking space) does not abort the run.
+    encodings = [encoding] if encoding else ["utf-8-sig", "cp1252"]
+    last_error: UnicodeDecodeError | None = None
+    for enc in encodings:
+        try:
+            with csv_path.open("r", newline="", encoding=enc) as handle:
+                reader = csv.DictReader(handle)
+                if reader.fieldnames is None:
+                    raise ValueError(f"CSV has no header row: {csv_path}")
+                fieldnames = list(reader.fieldnames)
+                rows = [dict(row) for row in reader]
+            return fieldnames, rows
+        except UnicodeDecodeError as exc:
+            last_error = exc
+
+    raise ValueError(
+        f"could not decode {csv_path} as {' or '.join(encodings)}. "
+        f"Re-run with --encoding to specify the correct one. ({last_error})"
+    )
 
 
 def resolve_output(args: argparse.Namespace) -> Path:
@@ -107,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
 
     try:
-        fieldnames, rows = read_rows(args.csv)
+        fieldnames, rows = read_rows(args.csv, args.encoding)
     except (FileNotFoundError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

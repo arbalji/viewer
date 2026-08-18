@@ -1,8 +1,6 @@
 {
   "name": "viewer",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "install": "sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y php-cli",
   "terminals": [
     {
       "name": "php-server",

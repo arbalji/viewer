@@ -1,0 +1,17 @@
+{
+  "name": "viewer",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "php-server",
+      "command": "php -S 0.0.0.0:8080 -t .",
+      "description": "PHP built-in web server serving the image proxy (process.php) at http://0.0.0.0:8080/process.php."
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 8080
+    }
+  ]
+}
